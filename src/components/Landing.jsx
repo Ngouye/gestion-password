@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight, Check, ChevronDown, ClipboardCheck, Copy, Database, Fingerprint, Gauge, KeyRound, Lock,
-  Menu, MonitorSmartphone, Plus, Search, ShieldCheck, Sparkles, Timer, UserPlus, Wand2, X,
+  Menu, MonitorSmartphone, Play, Plus, Search, ShieldCheck, Sparkles, Timer, UserPlus, Wand2, X,
 } from 'lucide-react';
 import { Brand, PasswordText } from './ui';
+import MotionVideo from './MotionVideo';
 
 const NAV_LINKS = [
+  { href: '#video', label: 'Vidéo' },
   { href: '#fonctionnalites', label: 'Fonctionnalités' },
   { href: '#etapes', label: 'Comment ça marche' },
   { href: '#securite', label: 'Sécurité' },
@@ -177,6 +179,12 @@ export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
 
+  // Lien direct vers une section (ex. /#video) : la cible n'existe qu'après le rendu.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
+
   return (
     <div className="landing">
       <div className="announce">
@@ -240,6 +248,10 @@ export default function Landing() {
               <a href="#connexion" className="btn btn-outline btn-xl">J’ai déjà un compte</a>
             </div>
             <p className="hero-note"><Lock size={13} /> Inscription par e-mail · Google, GitHub et Facebook bientôt</p>
+            <a href="#video" className="hero-video-link">
+              <span className="hero-video-icon"><Play size={12} fill="currentColor" /></span>
+              Voir la présentation <span className="hero-video-time">56 s</span>
+            </a>
           </div>
           <DeviceMockup />
         </div>
@@ -256,6 +268,8 @@ export default function Landing() {
           </div>
         ))}
       </section>
+
+      <MotionVideo />
 
       <section id="etapes" className="section">
         <div className="container">

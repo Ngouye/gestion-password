@@ -11,6 +11,7 @@ Gestionnaire de mots de passe chiffré côté client, synchronisé via Supabase.
 - Presse-papiers vidé 30 s après la copie d'un secret.
 - Recherche, ajout, modification et suppression (avec confirmation).
 - Interface claire/sombre selon le thème du système, responsive.
+- Page d'accueil avec présentation vidéo (motion design, 56 s) : lecture muette automatique à l'écran, chapitres cliquables, son à la demande.
 
 ## Installation
 

@@ -3843,3 +3843,340 @@ svg {
     left: 20px;
   }
 }
+
+/* ==========================================================================
+   Section vidéo (motion design)
+   ========================================================================== */
+
+.hero-video-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hero-video-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-bright);
+  transition: transform 0.2s var(--ease);
+}
+
+.hero-video-link:hover .hero-video-icon {
+  transform: scale(1.1);
+}
+
+.hero-video-time {
+  color: var(--text-subtle);
+  font-weight: 500;
+}
+
+.section-heading.align-left {
+  margin: 0;
+  text-align: left;
+}
+
+.video-section {
+  overflow: hidden;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'head reel'
+    'chapters reel';
+  column-gap: 72px;
+  row-gap: 28px;
+  align-items: center;
+}
+
+.video-head {
+  grid-area: head;
+  align-self: end;
+}
+
+.chapters {
+  grid-area: chapters;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+}
+
+.chapter {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  width: 100%;
+  padding: 14px 18px;
+  overflow: hidden;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color 0.2s var(--ease), background-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.chapter:hover {
+  border-color: var(--accent-border);
+  transform: translateX(4px);
+}
+
+.chapter.is-active {
+  border-color: var(--accent-bright);
+  background: var(--accent-soft);
+}
+
+.chapter-label {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chapter-title {
+  grid-column: 1;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chapter-time {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.chapter.is-done .chapter-time {
+  color: var(--success);
+}
+
+.chapter-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--accent-bright);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left;
+  transition: transform 0.3s linear;
+}
+
+.reel-wrap {
+  grid-area: reel;
+  position: relative;
+  justify-self: center;
+}
+
+/* Halo orange derrière la vidéo */
+.reel-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 10% -18%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(232, 89, 12, 0.35), transparent);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.reel {
+  position: relative;
+  z-index: 1;
+  width: min(360px, 82vw);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #0b0908;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.reel video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0b0908;
+}
+
+.reel-toggle {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.reel-play {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent-solid);
+  color: #fff;
+  box-shadow: var(--shadow-accent), 0 0 0 10px rgba(232, 89, 12, 0.18);
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.reel-play svg {
+  margin-left: 3px;
+}
+
+.reel.is-playing .reel-play {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.reel.is-playing .reel-play svg {
+  margin-left: 0;
+}
+
+/* Au survol (souris) ou au clavier seulement : sur écran tactile, le survol reste « collé ». */
+.reel-toggle:focus-visible .reel-play {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) {
+  .reel-toggle:hover .reel-play {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reel-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 40px 14px 16px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  pointer-events: none;
+}
+
+.reel-controls button {
+  pointer-events: auto;
+}
+
+.reel-sound,
+.reel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(20, 16, 13, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background-color 0.2s var(--ease);
+}
+
+.reel-sound {
+  padding: 0 14px;
+}
+
+.reel-sound.is-muted {
+  background: var(--accent-solid);
+  border-color: transparent;
+}
+
+.reel-icon {
+  width: 38px;
+}
+
+.reel-sound:hover,
+.reel-icon:hover {
+  background: rgba(40, 32, 26, 0.9);
+}
+
+.reel-sound.is-muted:hover {
+  background: var(--accent-solid-hover);
+}
+
+.reel-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--accent-bright);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left;
+  transition: transform 0.3s linear;
+}
+
+@media (max-width: 1024px) {
+  .video-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'head'
+      'reel'
+      'chapters';
+    row-gap: 32px;
+  }
+
+  .section-heading.align-left {
+    text-align: center;
+  }
+
+  .chapters {
+    width: 100%;
+    max-width: 560px;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .reel {
+    width: min(330px, 86vw);
+    border-radius: 26px;
+  }
+
+  .reel-sound span {
+    font-size: 12.5px;
+  }
+
+  .chapter {
+    padding: 12px 14px;
+  }
+
+  .chapter:hover {
+    transform: none;
+  }
+
+  .chapter-title {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-color-scheme: dark), (max-width: 900px) {
+  .reel {
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 138, 76, 0.28), 0 0 60px -20px rgba(232, 89, 12, 0.5);
+  }
+}

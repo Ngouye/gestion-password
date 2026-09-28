@@ -36,7 +36,7 @@ export default function Generator({ onSave, notify }) {
 
       <div className="panel-body">
         <div className="gen-output mono" aria-live="polite">
-          <PasswordText value={password} />
+          <span className="gen-text"><PasswordText value={password} /></span>
         </div>
         <StrengthMeter password={password} />
 

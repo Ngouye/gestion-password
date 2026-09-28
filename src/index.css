@@ -2445,6 +2445,12 @@ input[type='range']:focus-visible {
   border-radius: 14px;
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* Un seul bloc de texte : les caractères colorés passent à la ligne au lieu d'élargir la page. */
+.gen-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
   word-break: break-all;
 }
 
@@ -3751,4 +3757,89 @@ code {
 
 .crash-card p {
   color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Garde-fous anti-débordement horizontal
+   ========================================================================== */
+
+/* Aucun contenu, même imprévu (URL, clé, texte collé), ne doit élargir l'écran. */
+.app,
+.landing,
+.auth,
+.kit-screen {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.item-title .truncate,
+.item-meta,
+.user-email,
+.recovery-account,
+.auth-header p,
+.faq-item p,
+.alert span {
+  overflow-wrap: anywhere;
+}
+
+.mock-output,
+.item-secret.is-revealed {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* Une piste « 1fr » ne rétrécit pas sous la largeur de son contenu : on l'y autorise. */
+.layout > *,
+.stats > *,
+.hero-grid > *,
+.bento > *,
+.steps > *,
+.flow > *,
+.trust-strip > *,
+.server-compare > *,
+.gen-buttons > *,
+.recovery-actions > *,
+.oauth-grid > *,
+.form-row > *,
+.mock-body > * {
+  min-width: 0;
+}
+
+/* Téléphone : écrans de connexion et de clé de secours façon application native */
+@media (max-width: 480px) {
+  .auth-panel,
+  .kit-screen {
+    place-items: start stretch;
+  }
+
+  .auth-panel {
+    padding: 56px 20px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .kit-screen {
+    padding: calc(20px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .auth-card,
+  .kit-screen .auth-card {
+    max-width: none;
+    padding: 8px 0 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  .auth-mobile-brand {
+    margin-bottom: 24px;
+  }
+
+  .back-link {
+    top: calc(16px + env(safe-area-inset-top));
+    left: 20px;
+  }
 }

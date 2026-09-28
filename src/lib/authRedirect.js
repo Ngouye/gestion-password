@@ -16,3 +16,15 @@ if (description) {
 }
 url.searchParams.delete('reinitialisation');
 if (url.href !== window.location.href) window.history.replaceState(null, '', url);
+
+// Sans jeton enregistré ni retour d'authentification dans l'URL, le visiteur n'est pas connecté :
+// on affiche l'accueil immédiatement au lieu d'attendre l'initialisation de Supabase.
+function hasStoredSession() {
+  try {
+    return Object.keys(window.localStorage).some((key) => key.startsWith('sb-') && key.endsWith('-auth-token'));
+  } catch {
+    return true;
+  }
+}
+
+export const mayHaveSession = hasStoredSession() || new URLSearchParams(window.location.search).has('code');

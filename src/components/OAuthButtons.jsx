@@ -76,7 +76,7 @@ export default function OAuthButtons({ onError }) {
               aria-label={unavailable ? `Continuer avec ${label} (bientôt disponible)` : `Continuer avec ${label}`}
             >
               {pending === id ? <Loader2 size={18} className="spin" /> : <Logo />}
-              <span>{label}</span>
+              <span className="oauth-label">{label}</span>
               {unavailable && <span className="soon-badge" aria-hidden="true">Bientôt</span>}
             </button>
           );

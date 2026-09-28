@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { getSupabase } from '../lib/supabaseLoader';
 import { decryptEntry, encryptEntry } from '../lib/crypto';
 
 const TABLE = 'passwords';
+const NETWORK_ERROR = 'Connexion impossible. Vérifiez votre accès à Internet et réessayez.';
 
 export function useVault(userId, notify) {
   const [key, setKey] = useState(null);
@@ -17,61 +18,79 @@ export function useVault(userId, notify) {
   const unlock = useCallback(async (newKey) => {
     setKey(newKey);
     setLoading(true);
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      notify('Impossible de charger le coffre.', 'error');
-    } else {
+    try {
+      const supabase = await getSupabase();
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
       setEntries(await Promise.all(data.map((row) => decryptEntry(newKey, row))));
+    } catch {
+      notify('Impossible de charger le coffre. Vérifiez votre connexion.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [notify]);
 
   const saveEntry = useCallback(async (values, id) => {
-    const payload = await encryptEntry(key, values);
-    const query = id
-      ? supabase.from(TABLE).update(payload).eq('id', id)
-      : supabase.from(TABLE).insert({ ...payload, user_id: userId });
-    const { data, error } = await query.select();
+    try {
+      const [payload, supabase] = await Promise.all([encryptEntry(key, values), getSupabase()]);
+      const query = id
+        ? supabase.from(TABLE).update(payload).eq('id', id)
+        : supabase.from(TABLE).insert({ ...payload, user_id: userId });
+      const { data, error } = await query.select();
 
-    // Sans erreur mais sans ligne renvoyée : la requête a été filtrée par la RLS.
-    if (error || !data?.length) {
-      notify(id ? 'Modification refusée par le serveur.' : "Échec de l'enregistrement.", 'error');
+      // Sans erreur mais sans ligne renvoyée : la requête a été filtrée par la RLS.
+      if (error || !data?.length) {
+        notify(id ? 'Modification refusée par le serveur.' : "Échec de l'enregistrement.", 'error');
+        return false;
+      }
+      const saved = { ...data[0], ...values, legacy: false, unreadable: false };
+      setEntries((prev) => (id ? prev.map((e) => (e.id === id ? saved : e)) : [saved, ...prev]));
+      notify(id ? 'Élément mis à jour.' : 'Élément ajouté au coffre.');
+      return true;
+    } catch {
+      notify(NETWORK_ERROR, 'error');
       return false;
     }
-    const saved = { ...data[0], ...values, legacy: false, unreadable: false };
-    setEntries((prev) => (id ? prev.map((e) => (e.id === id ? saved : e)) : [saved, ...prev]));
-    notify(id ? 'Élément mis à jour.' : 'Élément ajouté au coffre.');
-    return true;
   }, [key, userId, notify]);
 
   const deleteEntry = useCallback(async (id) => {
-    const { data, error } = await supabase.from(TABLE).delete().eq('id', id).select('id');
-    if (error || !data?.length) {
-      notify('Suppression impossible.', 'error');
-      return;
+    try {
+      const supabase = await getSupabase();
+      const { data, error } = await supabase.from(TABLE).delete().eq('id', id).select('id');
+      if (error || !data?.length) {
+        notify('Suppression impossible.', 'error');
+        return;
+      }
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+      notify('Élément supprimé.');
+    } catch {
+      notify(NETWORK_ERROR, 'error');
     }
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-    notify('Élément supprimé.');
   }, [notify]);
 
   const encryptLegacy = useCallback(async () => {
     const legacy = entries.filter((e) => e.legacy);
     let done = 0;
-    for (const entry of legacy) {
-      const payload = await encryptEntry(key, entry);
-      const { data, error } = await supabase.from(TABLE).update(payload).eq('id', entry.id).select('id');
-      if (!error && data?.length) {
-        done++;
-        setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, legacy: false } : e)));
+    try {
+      const supabase = await getSupabase();
+      for (const entry of legacy) {
+        const payload = await encryptEntry(key, entry);
+        const { data, error } = await supabase.from(TABLE).update(payload).eq('id', entry.id).select('id');
+        if (!error && data?.length) {
+          done++;
+          setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, legacy: false } : e)));
+        }
       }
+    } catch {
+      // Les éléments déjà chiffrés sont conservés ; le compte rendu ci-dessous l'indique.
     }
     if (done === legacy.length) {
       notify(`${done} élément(s) chiffré(s).`);
     } else {
-      notify(`${done}/${legacy.length} élément(s) chiffré(s). Vérifiez la politique RLS UPDATE.`, 'error');
+      notify(`${done}/${legacy.length} élément(s) chiffré(s). Vérifiez votre connexion et la politique RLS UPDATE.`, 'error');
     }
   }, [entries, key, notify]);
 

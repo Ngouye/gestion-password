@@ -114,7 +114,7 @@ export default function Vault({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un service ou un identifiant…"
+                placeholder="Rechercher un élément…"
                 aria-label="Rechercher"
               />
               {query && (

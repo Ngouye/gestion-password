@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Copy, Eye, EyeOff, Pencil, Trash2, UserRound } from 'lucide-react';
 import { CLIPBOARD_CLEAR_SECONDS, copySecret } from '../lib/clipboard';
 
@@ -10,7 +10,7 @@ function hueFor(text) {
   return hash;
 }
 
-export default function VaultItem({ entry, onEdit, onDelete, notify }) {
+function VaultItem({ entry, onEdit, onDelete, notify }) {
   const [revealed, setRevealed] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const confirmTimer = useRef(null);
@@ -93,3 +93,6 @@ export default function VaultItem({ entry, onEdit, onDelete, notify }) {
     </li>
   );
 }
+
+// Une frappe dans la recherche ne re-rend que les lignes dont les données changent.
+export default memo(VaultItem);

@@ -51,20 +51,22 @@ async function updateEnvelopes(userId, fields) {
   if (!data.length) throw new Error('Mise à jour refusée par le serveur.');
 }
 
-async function sealVault(userId, password, raw) {
+// Les dérivations (CPU) et les requêtes (réseau) sont lancées ensemble autant que possible :
+// PBKDF2 est volontairement lent, il ne doit jamais attendre le réseau ni l'inverse.
+
+async function sealVault(userId, raw, passwordWrapKey) {
   const recoveryKey = generateRecoveryKey();
   const [byPassword, byRecovery] = await Promise.all([
-    derivePasswordWrapKey(password, userId).then((wrapKey) => wrapDataKey(wrapKey, raw)),
+    wrapDataKey(passwordWrapKey, raw),
     deriveRecoveryWrapKey(recoveryKey, userId).then((wrapKey) => wrapDataKey(wrapKey, raw)),
   ]);
   await writeEnvelopes(userId, { wrapped_by_password: byPassword, wrapped_by_recovery: byRecovery });
   return recoveryKey;
 }
 
-async function openWithPassword(user, password, envelope) {
+async function openEnvelope(wrapKey, envelope) {
   try {
-    const raw = await unwrapDataKey(await derivePasswordWrapKey(password, user.id), envelope);
-    return importDataKey(raw);
+    return importDataKey(await unwrapDataKey(wrapKey, envelope));
   } catch {
     throw new Error('Mot de passe maître incorrect.');
   }
@@ -76,28 +78,35 @@ async function openWithPassword(user, password, envelope) {
  * Retourne { key, recoveryKey?, recoveryUnavailable? } ; `recoveryKey` est à montrer une fois.
  */
 export async function openVault(user, password, { loginVerified = false } = {}) {
-  const { available, envelopes } = await fetchEnvelopes();
-  if (envelopes) return { key: await openWithPassword(user, password, envelopes.wrapped_by_password) };
+  const [{ available, envelopes }, wrapKey] = await Promise.all([
+    fetchEnvelopes(),
+    derivePasswordWrapKey(password, user.id),
+  ]);
+  if (envelopes) return { key: await openEnvelope(wrapKey, envelopes.wrapped_by_password) };
 
   if (!hasPasswordLogin(user)) throw new Error(available ? 'Aucun coffre trouvé pour ce compte.' : MISSING_TABLE_MESSAGE);
 
-  if (!loginVerified) {
-    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password });
-    if (error) throw error;
-  }
   // Coffre historique : sa clé devient la clé de données, puis on crée les enveloppes.
-  const raw = await deriveLegacyKeyBytes(password, user.id);
+  const [raw, login] = await Promise.all([
+    deriveLegacyKeyBytes(password, user.id),
+    loginVerified ? null : supabase.auth.signInWithPassword({ email: user.email, password }),
+  ]);
+  if (login?.error) throw login.error;
+
   const key = await importDataKey(raw);
   if (!available) return { key, recoveryUnavailable: true };
-  return { key, recoveryKey: await sealVault(user.id, password, raw) };
+  return { key, recoveryKey: await sealVault(user.id, raw, wrapKey) };
 }
 
 export async function createVault(user, password, profile) {
-  const { available, envelopes } = await fetchEnvelopes();
+  const [{ available, envelopes }, wrapKey] = await Promise.all([
+    fetchEnvelopes(),
+    derivePasswordWrapKey(password, user.id),
+  ]);
   if (envelopes) {
     // Le coffre existe déjà (indicateur de profil perdu) : on l'ouvre au lieu de l'écraser.
     try {
-      return { key: await openWithPassword(user, password, envelopes.wrapped_by_password) };
+      return { key: await openEnvelope(wrapKey, envelopes.wrapped_by_password) };
     } catch {
       throw new Error('Ce compte possède déjà un coffre : saisissez le mot de passe maître choisi à sa création.');
     }
@@ -109,11 +118,11 @@ export async function createVault(user, password, profile) {
   }
 
   const raw = generateDataKeyBytes();
-  const recoveryKey = await sealVault(user.id, password, raw);
-  if (!hasPasswordLogin(user)) {
-    const { error } = await supabase.auth.updateUser({ data: { ...profile, vault_ready: true } });
-    if (error) throw error;
-  }
+  const [recoveryKey] = await Promise.all([
+    sealVault(user.id, raw, wrapKey),
+    hasPasswordLogin(user) ? null : supabase.auth.updateUser({ data: { ...profile, vault_ready: true } })
+      .then(({ error }) => { if (error) throw error; }),
+  ]);
   return { key: await importDataKey(raw), recoveryKey };
 }
 
@@ -126,46 +135,55 @@ async function changeLoginPassword(user, newPassword) {
 
 // Mot de passe maître oublié : la clé de secours déverrouille la clé de données.
 export async function recoverVault(user, recoveryKey, newPassword) {
-  const { available, envelopes } = await fetchEnvelopes();
+  const [{ available, envelopes }, recoveryWrapKey, passwordWrapKey] = await Promise.all([
+    fetchEnvelopes(),
+    deriveRecoveryWrapKey(recoveryKey, user.id),
+    derivePasswordWrapKey(newPassword, user.id),
+  ]);
   if (!available) throw new Error(MISSING_TABLE_MESSAGE);
   if (!envelopes) throw new Error('Aucune clé de secours n’est associée à ce compte.');
 
   let raw;
   try {
-    raw = await unwrapDataKey(await deriveRecoveryWrapKey(recoveryKey, user.id), envelopes.wrapped_by_recovery);
+    raw = await unwrapDataKey(recoveryWrapKey, envelopes.wrapped_by_recovery);
   } catch {
     throw new Error('Clé de secours invalide.');
   }
 
   await changeLoginPassword(user, newPassword);
-  const wrapKey = await derivePasswordWrapKey(newPassword, user.id);
-  await updateEnvelopes(user.id, { wrapped_by_password: await wrapDataKey(wrapKey, raw) });
+  await updateEnvelopes(user.id, { wrapped_by_password: await wrapDataKey(passwordWrapKey, raw) });
   return { key: await importDataKey(raw) };
 }
 
 // Dernier recours sans clé de secours : nouveau coffre vide, les anciens éléments restent illisibles.
 export async function resetVault(user, newPassword) {
-  const { available } = await fetchEnvelopes();
+  const [{ available }, wrapKey] = await Promise.all([
+    fetchEnvelopes(),
+    derivePasswordWrapKey(newPassword, user.id),
+  ]);
   if (!available) throw new Error(MISSING_TABLE_MESSAGE);
   await changeLoginPassword(user, newPassword);
   const raw = generateDataKeyBytes();
-  return { key: await importDataKey(raw), recoveryKey: await sealVault(user.id, newPassword, raw) };
+  return { key: await importDataKey(raw), recoveryKey: await sealVault(user.id, raw, wrapKey) };
 }
 
 // Remplace la clé de secours (perdue ou compromise) ; exige le mot de passe maître.
 export async function regenerateRecoveryKey(user, password) {
-  const { available, envelopes } = await fetchEnvelopes();
+  const [{ available, envelopes }, wrapKey] = await Promise.all([
+    fetchEnvelopes(),
+    derivePasswordWrapKey(password, user.id),
+  ]);
   if (!available) throw new Error(MISSING_TABLE_MESSAGE);
   if (!envelopes) throw new Error('Aucun coffre trouvé pour ce compte.');
 
   let raw;
   try {
-    raw = await unwrapDataKey(await derivePasswordWrapKey(password, user.id), envelopes.wrapped_by_password);
+    raw = await unwrapDataKey(wrapKey, envelopes.wrapped_by_password);
   } catch {
     throw new Error('Mot de passe maître incorrect.');
   }
   const recoveryKey = generateRecoveryKey();
-  const wrapKey = await deriveRecoveryWrapKey(recoveryKey, user.id);
-  await updateEnvelopes(user.id, { wrapped_by_recovery: await wrapDataKey(wrapKey, raw) });
+  const recoveryWrapKey = await deriveRecoveryWrapKey(recoveryKey, user.id);
+  await updateEnvelopes(user.id, { wrapped_by_recovery: await wrapDataKey(recoveryWrapKey, raw) });
   return recoveryKey;
 }

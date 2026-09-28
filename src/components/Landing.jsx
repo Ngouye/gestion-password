@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import {
   ArrowRight, Check, ChevronDown, ClipboardCheck, Copy, Database, Fingerprint, Gauge, KeyRound, Lock,
-  MonitorSmartphone, Plus, Search, ShieldCheck, Sparkles, Timer, UserPlus, Wand2, X,
+  Menu, MonitorSmartphone, Plus, Search, ShieldCheck, Sparkles, Timer, UserPlus, Wand2, X,
 } from 'lucide-react';
 import { Brand, PasswordText } from './ui';
 
@@ -173,6 +174,9 @@ function DeviceMockup() {
 }
 
 export default function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <div className="landing">
       <div className="announce">
@@ -188,9 +192,28 @@ export default function Landing() {
           </div>
           <div className="site-nav-actions">
             <a href="#connexion" className="btn btn-ghost hide-sm">Se connecter</a>
-            <a href="#inscription" className="btn btn-primary">Créer mon coffre</a>
+            <a href="#inscription" className="btn btn-primary nav-cta">Créer mon coffre</a>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon-only menu-toggle"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+        {menuOpen && (
+          <div id="mobile-menu" className="mobile-menu">
+            {NAV_LINKS.map((link) => <a key={link.href} href={link.href} onClick={closeMenu}>{link.label}</a>)}
+            <div className="mobile-menu-actions">
+              <a href="#connexion" className="btn btn-outline btn-lg">Se connecter</a>
+              <a href="#inscription" className="btn btn-primary btn-lg">Créer mon coffre</a>
+            </div>
+          </div>
+        )}
       </nav>
 
       <header className="hero">

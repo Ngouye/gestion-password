@@ -30,6 +30,15 @@ const SUBMIT_LABELS = {
   recover: 'Restaurer mon coffre',
 };
 
+const BUSY_LABELS = {
+  login: 'Connexion sécurisée…',
+  signup: 'Création du coffre…',
+  forgot: 'Envoi en cours…',
+  unlock: 'Déverrouillage…',
+  setup: 'Création du coffre…',
+  recover: 'Restauration…',
+};
+
 const redirectUrl = (query = '') => `${window.location.origin}${window.location.pathname}${query}`;
 
 function namesFrom(user) {
@@ -421,7 +430,9 @@ export default function AuthScreen({ session, mode, onModeChange, onUnlock, init
             )}
 
             <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>
-              {busy ? <Loader2 size={18} className="spin" /> : <>{submitLabel}<ArrowRight size={16} /></>}
+              {busy
+                ? <><Loader2 size={18} className="spin" />{BUSY_LABELS[current]}</>
+                : <>{submitLabel}<ArrowRight size={16} /></>}
             </button>
           </form>
 

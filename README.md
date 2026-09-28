@@ -32,6 +32,10 @@ Les boutons restent grisés tant que le fournisseur n'est pas activé dans Supab
    - GitHub : Settings → Developer settings → OAuth Apps → New OAuth App.
    - Facebook : developers.facebook.com → Créer une app → produit « Facebook Login ».
 
+### Déploiement (Vercel)
+
+[`vercel.json`](vercel.json) applique les en-têtes de sécurité (CSP stricte, HSTS, anti-clickjacking, `no-referrer`) et met en cache longue durée les fichiers `assets/`. `npm run preview` sert les mêmes en-têtes en local. Pensez à définir `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` dans les variables d'environnement du projet Vercel.
+
 ## Modèle de sécurité
 
 - Le coffre est chiffré avec une **clé de données** aléatoire (AES-256-GCM). Elle est stockée dans `vault_keys` sous deux enveloppes chiffrées : l'une scellée par le mot de passe maître (PBKDF2, 600 000 itérations), l'autre par la clé de secours (160 bits, HKDF). Le serveur ne voit jamais la clé de données.
